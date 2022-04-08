@@ -29,6 +29,7 @@ class Game {
     this.reset()
   }
   reset() {
+    this.state = 'playing'
     this.isMinePlanted = false
     this.stage = []
     for (let i = 0; i < this.size; i++) {
@@ -117,7 +118,16 @@ class Game {
     }
   }
 }
-const game = ref(new Game(10, 10))
+
+const size = ref(10)
+const game = ref(new Game(size.value, size.value ** 2 / 10))
+
+useStorage('state', game, undefined, {
+  serializer: {
+    read: v => v ? Object.assign(game.value, JSON.parse(v)) : game.value,
+    write: v => JSON.stringify(v)
+  },
+})
 
 const getBoxClass = (box: Box) => {
   const classList = ['w-8 h-8 grid place-items-center']
@@ -168,8 +178,8 @@ const stage = computed(() => game.value.stage)
           <span v-if="game.state === 'win'">You Win!</span>
           <span v-if="game.state === 'lose'">You Lose!</span>
         </div>
-        <div class="action">
-          <button v-if="game.state === 'playing'" @click="game.reset()">Reset</button>
+        <div class="mt-2 flex justify-center">
+          <div class="cursor-pointer" @click="game.reset()" i-carbon:renew></div>
         </div>
       </div>
     </div>
