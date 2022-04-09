@@ -23,12 +23,14 @@ class Game {
   stage = ([] as Box[][])
   // 是否生成地雷了
   isMinePlanted = false
+  loading = false
   state: 'playing' | 'win' | 'lose' = 'playing'
   constructor(public size: number, public mines: number) {
     this.size = size
     this.reset()
   }
   reset() {
+    this.loading = false
     this.state = 'playing'
     this.isMinePlanted = false
     this.stage = []
@@ -71,7 +73,9 @@ class Game {
       }
     }
   }
-  onBoxClick(x: number, y: number) {
+  async onBoxClick(x: number, y: number) {
+    if (this.loading) return
+    this.loading = true
     if (this.state !== 'playing') return
     if (!this.isMinePlanted) {
       this.plantMines(this.mines, x, y)
@@ -90,14 +94,23 @@ class Game {
     } else {
       box.opened = true
       if (box.nearMines === 0) {
-        for (let xx = x - 1; xx <= x + 1; xx++) {
-          for (let yy = y - 1; yy <= y + 1; yy++) {
-            if (xx < 0 || xx >= this.size || yy < 0 || yy >= this.size) continue
-            const near = this.stage[yy][xx]
-            if (!near.opened) {
-              this.onBoxClick(xx, yy)
+        let tempList: Box[] = [box]
+        while (tempList.length) {
+          let list: Box[] = []
+          for (const { x, y } of tempList) {
+            for (let xx = x - 1; xx <= x + 1; xx++) {
+              for (let yy = y - 1; yy <= y + 1; yy++) {
+                if (xx < 0 || xx >= this.size || yy < 0 || yy >= this.size) continue
+                const near = this.stage[yy][xx]
+                if (!near.opened) {
+                  await sleep(5)
+                  if (near.nearMines === 0) list.push(near)
+                  near.opened = true
+                }
+              }
             }
           }
+          tempList = list
         }
       } else if (this.stage.flat().every(i => i.opened || i.mine)) {
         this.state = 'win'
@@ -106,7 +119,7 @@ class Game {
         })
       }
     }
-
+    this.loading = false
   }
   showAllMines() {
     for (const row of this.stage) {
@@ -142,6 +155,8 @@ const getBoxClass = (box: Box) => {
 
 const stage = computed(() => game.value.stage)
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 </script>
 
 <template>
@@ -165,7 +180,7 @@ const stage = computed(() => game.value.stage)
                 :style="{ color: colors[box.nearMines] }"
               ></div>
               <div v-if="box.mine && box.opened" class="bg-red-500">
-                <div i-carbon:close-filled></div>
+                <div text-sm i-mdi:mine></div>
               </div>
               <!-- <div class="cell-inner" v-if="cell.flagged" v-text="'🚩'"></div> -->
             </div>
